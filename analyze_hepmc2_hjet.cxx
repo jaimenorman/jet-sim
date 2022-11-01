@@ -243,12 +243,18 @@ int main(int argc, char **argv) {
     TH2F *hPtJetDPhiReference[nR];
     TH1F *hRecoilPtJetReference[nR];
     TH1F *hRecoilPtJetSignal[nR];
+    TH1F *hPtJet[nR];
+    TH1F *hEtaJet[nR];
     TH1F *hNEvent = new TH1F("hNEvent","number of events; N",1,0,1);
     hNEvent->Sumw2();
     TH1F *hNtrig = new TH1F("hNtrig", "number of triggers", 2,0,2);
     hNtrig->GetXaxis()->SetBinLabel(1,"reference") ;
     hNtrig->GetXaxis()->SetBinLabel(2,"signal"); 
     hNtrig->Sumw2();
+    TH1F *hPtTrack = new TH1F("hPtTrack", "Track p_{T};p_{T}",100,0,100);
+    TH1F *hEtaTrack = new TH1F("hEtaTrack", "Track #eta;#eta",20,-1,1);
+    hPtTrack->Sumw2();
+    hEtaTrack->Sumw2();
 
     TH1F *hPtLead = new TH1F(Form("h%s",trigLabel.Data()),Form("%s pt;p_{T}",trigTitle.Data()),100,0,100);
     hPtLead->Sumw2();
@@ -292,6 +298,16 @@ int main(int argc, char **argv) {
         sprintf(htitle,"%s pt vs jet vs dphi R=%.1f;p_{T,lead} (GeV/c);p_{T,jet} (GeV/c);|k_{T,y}|=|p_{T,jet}sin(#delta#phi)|",trigTitle.Data(),jetR);
         hPtLeadPtJetKt[iR] = new TH3F(hname, htitle, 50,0,50,150,0,150,100,0,50);
         hPtLeadPtJetKt[iR]->Sumw2();
+
+        sprintf(hname,"hPtJet_R%02d",iR+2);
+        sprintf(htitle,"p_{T} jet spectrum R=%.1f;p_{T,jet} (GeV)",jetR);
+        hPtJet[iR] = new TH1F(hname, htitle, 100,0,100);
+        hPtJet[iR]->Sumw2();
+
+        sprintf(hname,"hEtaJet_R%02d",iR+2);
+        sprintf(htitle,"#eta jet spectrum R=%.1f;#eta_{jet}",jetR);
+        hEtaJet[iR] = new TH1F(hname, htitle, 20,-1,1);
+        hEtaJet[iR]->Sumw2();
     }
 
     // set up object to get random number for TT selection
@@ -373,6 +389,8 @@ int main(int argc, char **argv) {
                 // Check for jet constituents
                 if (!charged_jets || is_charged(p)) {
                     hPtTrackEta->Fill(p->momentum().perp(), p->momentum().eta(),evt->weights()[0]);
+                    hPtTrack->Fill(p->momentum().perp(),evt->weights()[0]);
+                    hEtaTrack->Fill(p->momentum().eta(),evt->weights()[0]);
 
                     // create jet constituent and add to vector
                     fastjet::PseudoJet jInp(p->momentum().px(),p->momentum().py(),p->momentum().pz(),p->momentum().e());
@@ -467,6 +485,8 @@ int main(int argc, char **argv) {
                 // fill histos
                 hPtJetEta[iR]->Fill(jet_pt,jet_eta,evt->weights()[0]);
                 hPtLeadPtJetDPhi[iR]->Fill(pt_lead,jet_pt,fabs(dphi_jh),evt->weights()[0]);
+                hPtJet[iR]->Fill(jet_pt,evt->weights()[0]);
+                hEtaJet[iR]->Fill(jet_eta,evt->weights()[0]);
                 if (TMath::Abs(dphi_jh-TMath::Pi()) < 0.5*TMath::Pi()) {
                     float kt_jh = TMath::Abs(jet_pt*TMath::Sin(dphi_jh));
                     hPtLeadPtJetKt[iR]->Fill(pt_lead,jet_pt,kt_jh,evt->weights()[0]);
