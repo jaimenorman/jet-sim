@@ -1,0 +1,19 @@
+# example parameter file to run on batch (see NJOB)
+
+NEVENT 10000
+#NJOB 1234
+LOGFILE jewel-out.log
+HEPMCFILE jewel-out.hepmc
+SQRTS 5020.0
+MASS 208.
+PTMIN 5.0
+PTMAX -1.0
+#ETAMAX 2.5
+WEIGHTED T
+#WEXPO 2
+ANGORD T
+KEEPRECOILS F
+NSET 1
+NJOB MYNJOB
+#SHORTHEPMC F
+
