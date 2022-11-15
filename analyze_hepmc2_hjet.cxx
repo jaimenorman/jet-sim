@@ -17,6 +17,7 @@
 
 #include <iostream>
 #include <vector>
+#include <cmath>
 
 using std::cout;
 using std::cerr;
@@ -154,9 +155,10 @@ int main(int argc, char **argv) {
     static const int debug = 0;
 
     // defaults, can be set with arguments --chargedjets --fuljets --nobkg
-    int do_bkg = 0; // 0: no subtraction; 1: subtract onlyjet energy
+    int do_bkg = 0; // 0: no subtraction; 1: subtract onlyjet energy; 2: four momentum subtraction
     int charged_jets = 1; // 1: charged jets, 0: full jets
     int gamma_trig = 0; // gamma jet or hadron jet?
+    bool add_dummies = true; // include dummies in jet reconstruction
     // h jet options
     float frac_sig = 0.5; // fraction of events to use for signal
     float pt_TTref_min = 5; // reference minimum trigger track pt
@@ -348,6 +350,7 @@ int main(int argc, char **argv) {
 
         int index = 0;
         std::vector <fastjet::PseudoJet> fjInputs;
+        std::vector <HepMC::GenParticle*> thermal;
         // 
         // -- particle loop --
         // loop over all particles in the HepMC event. This is done to find the 'trigger', i.e.
@@ -397,8 +400,26 @@ int main(int argc, char **argv) {
                     jInp.set_user_index(index);
                     fjInputs.push_back(jInp);
                     index++;
-                } 
+                }
+
+
+                // also add dummies
+                if (add_dummies && p->momentum().e() < 0.11e-5) {
+                    fastjet::PseudoJet jInp(p->momentum().px(),p->momentum().py(),p->momentum().pz(),p->momentum().e());
+                    jInp.set_user_index(index);
+                    fjInputs.push_back(jInp);
+                    index++;
+                }
             }
+
+            // Find thermal momenta.
+            if (p->status() == 3){
+                thermal.push_back((HepMC::GenParticle*)p);
+                if(debug){
+                    cout << " thermal momentum particle px = " << p->momentum().px() << endl;
+                }
+            }
+
         }  // end of particle loop 
 
         // pick random trigger track
@@ -439,7 +460,7 @@ int main(int argc, char **argv) {
             fastjet::ClusterSequenceArea *clustSeqBG = 0;
 
 
-            if (do_bkg) {
+            if (do_bkg==1) {
                 fastjet::JetDefinition jetDefBG(fastjet::kt_algorithm, jetR, recombScheme, strategy);
                 fastjet::Selector  BGSelector = fastjet::SelectorStrip(2*jetR);  //.......... Background Sutraction event by event
 
@@ -471,7 +492,7 @@ int main(int argc, char **argv) {
                 float jet_eta = inclusiveJetsCh[iJet].eta();
                 //emb_jet_phi = inclusiveJetsCh[iJet].phi();
                 float jet_area = clustSeqCh.area(inclusiveJetsCh[iJet]);
-                if (do_bkg) {
+                if (do_bkg==1) {
                     // subtract background from jet
                     try {
                         float rho = bge.rho(inclusiveJetsCh[iJet]);
@@ -481,6 +502,26 @@ int main(int argc, char **argv) {
                         // No bkg jet in range
                         cout << "Fastjet error: " << e.message() << " caught" << endl;
                     }
+                }
+                else if (do_bkg==2) {
+                    // 4momSub
+                    fastjet::PseudoJet bkg;
+                    for (unsigned int ip = 0; ip < thermal.size(); ++ip){
+                        fastjet::PseudoJet p(thermal[ip]->momentum().px(),thermal[ip]->momentum().py(),thermal[ip]->momentum().pz(),thermal[ip]->momentum().e());
+                        for (fastjet::PseudoJet constituent: inclusiveJetsCh[iJet].constituents()){
+                            const double deltaEta = constituent.eta() - thermal[ip]->momentum().eta();
+                            const double deltaPhi = constituent.phi() - thermal[ip]->momentum().phi();
+                            const double deltaR = sqrt(pow(deltaEta,2) + pow(deltaPhi,2));
+                            if (deltaR < 1e-5){
+                                bkg += p;
+                                break;
+                            }
+                        }
+                    }
+                    if (debug){
+                        cout << "background 4 momentum = " << bkg.perp() << endl;
+                    }
+                    inclusiveJetsCh[iJet] -= bkg;
                 }
                 // fill histos
                 hPtJetEta[iR]->Fill(jet_pt,jet_eta,evt->weights()[0]);
