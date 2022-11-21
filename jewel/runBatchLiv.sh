@@ -5,7 +5,7 @@
 echo ">>> Starting Batch job on $HOSTNAME at $(date) <<<"
 
 # set JEWEL directory
-INDIR=/user/jnorman/Packages/Jewel/jewel-2.2.0
+INDIR=/user/djones/Packages/jewel-2.4.0
 
 SLURM=$([[ -f /etc/redhat-release ]] && cat /etc/redhat-release | grep -c CentOS)
 [[ $SLURM -eq 1 ]] && TMPDIR=$HEPTMP/$SLURM_JOBID || TMPDIR=$HEPTMP/$(echo $PBS_JOBID | cut -d . -f 1)

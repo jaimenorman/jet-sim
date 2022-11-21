@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
     static const int debug = 0;
 
     // defaults, can be set with arguments --chargedjets --fuljets --nobkg
-    int do_bkg = 0; // 0: no subtraction; 1: subtract onlyjet energy; 2: four momentum subtraction
+    int do_bkg = 2; // 0: no subtraction; 1: subtract onlyjet energy; 2: four momentum subtraction
     int charged_jets = 1; // 1: charged jets, 0: full jets
     int gamma_trig = 0; // gamma jet or hadron jet?
     bool add_dummies = true; // include dummies in jet reconstruction
@@ -262,6 +262,10 @@ int main(int argc, char **argv) {
     hPtLead->Sumw2();
     TH2F *hPtTrackEta = new TH2F("hPtTrackEta","hadron pt,eta;p_{T};#eta",100,0,100,20,-1,1);
     hPtTrackEta->Sumw2();
+    TH2F *hSubComparison = new TH2F("hSubComparison","corrected vs uncorrected pt;p_{T,old};p_{T,new}",100,0,15,100,0,15);
+    hSubComparison->Sumw2();
+    TH2F *hFracChange = new TH2F("hFracChange","fractional change of pt;p_{T,new}/p_{T,old};p_{T,new}",100,0,1,100,0,15);
+    hFracChange->Sumw2();
     for (Int_t iR = 0; iR < nR; iR++) {
         Float_t jetR = 0.2 + 0.1*iR;
         char hname[256];
@@ -522,8 +526,12 @@ int main(int argc, char **argv) {
                         cout << "background 4 momentum = " << bkg.perp() << endl;
                     }
                     inclusiveJetsCh[iJet] -= bkg;
+                    hSubComparison->Fill(jet_pt,inclusiveJetsCh[iJet].perp(),evt->weights()[0]);
+                    hFracChange->Fill(inclusiveJetsCh[iJet].perp()/jet_pt,inclusiveJetsCh[iJet].perp(),evt->weights()[0]);
                 }
                 // fill histos
+                jet_pt = inclusiveJetsCh[iJet].perp();
+                jet_eta = inclusiveJetsCh[iJet].eta();
                 hPtJetEta[iR]->Fill(jet_pt,jet_eta,evt->weights()[0]);
                 hPtLeadPtJetDPhi[iR]->Fill(pt_lead,jet_pt,fabs(dphi_jh),evt->weights()[0]);
                 hPtJet[iR]->Fill(jet_pt,evt->weights()[0]);
