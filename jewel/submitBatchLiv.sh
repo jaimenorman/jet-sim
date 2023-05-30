@@ -4,10 +4,10 @@
 # number to start at
 OFFSET=1
 # number of parallel jobs to run
-JOBS=20
+JOBS=100
 
 # Outdir labelled by date and time
-OUTDIR=/user/djones/simulation/Output/$(date +%Y%m%d.%H%M)
+OUTDIR=/scratch/djones/simulation/Output/$(date +%Y%m%d.%H%M)
 # job name - files will be output to this name
 MACRO='jewel'
 

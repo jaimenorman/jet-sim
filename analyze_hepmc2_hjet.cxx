@@ -157,7 +157,7 @@ int main(int argc, char **argv) {
     // defaults, can be set with arguments --chargedjets --fuljets --nobkg
     int do_bkg = 2; // 0: no subtraction; 1: subtract onlyjet energy; 2: four momentum subtraction
     int charged_jets = 1; // 1: charged jets, 0: full jets
-    int gamma_trig = 0; // gamma jet or hadron jet?
+    int gamma_trig = 1; // gamma jet or hadron jet?
     bool add_dummies = true; // include dummies in jet reconstruction
     // h jet options
     float frac_sig = 0.5; // fraction of events to use for signal
@@ -243,8 +243,11 @@ int main(int argc, char **argv) {
     TH3F *hPtLeadPtJetKt[nR];
     TH2F *hPtJetDPhiSignal[nR];
     TH2F *hPtJetDPhiReference[nR];
+    // these two below
     TH1F *hRecoilPtJetReference[nR];
     TH1F *hRecoilPtJetSignal[nR];
+    TH1F *hRecoilPtJetSignalNoWeights[nR];
+    TH1F *hRecoilPtJetReferenceNoWeights[nR];
     TH1F *hPtJet[nR];
     TH1F *hEtaJet[nR];
     TH1F *hNEvent = new TH1F("hNEvent","number of events; N",1,0,1);
@@ -262,9 +265,9 @@ int main(int argc, char **argv) {
     hPtLead->Sumw2();
     TH2F *hPtTrackEta = new TH2F("hPtTrackEta","hadron pt,eta;p_{T};#eta",100,0,100,20,-1,1);
     hPtTrackEta->Sumw2();
-    TH2F *hSubComparison = new TH2F("hSubComparison","corrected vs uncorrected pt;p_{T,old};p_{T,new}",100,0,15,100,0,15);
+    TH2F *hSubComparison = new TH2F("hSubComparison","corrected vs uncorrected pt;p_{T,old};p_{T,new}",100,0,50,100,0,50);
     hSubComparison->Sumw2();
-    TH2F *hFracChange = new TH2F("hFracChange","fractional change of pt;p_{T,new}/p_{T,old};p_{T,new}",100,0,1,100,0,15);
+    TH2F *hFracChange = new TH2F("hFracChange","fractional change of pt;p_{T,new}/p_{T,old};p_{T,new}",100,0,1.5,100,0,50);
     hFracChange->Sumw2();
     for (Int_t iR = 0; iR < nR; iR++) {
         Float_t jetR = 0.2 + 0.1*iR;
@@ -295,10 +298,20 @@ int main(int argc, char **argv) {
         hRecoilPtJetReference[iR] = new TH1F(hname, htitle, 200,-50,150);
         hRecoilPtJetReference[iR]->Sumw2();
 
+        sprintf(hname,"hRecoilPtJetReferenceNoWeights_R%02d",iR+2);
+        sprintf(htitle,"recoil jet pt reference no weights R=%.1f;p_{T,jet} (GeV/c)",jetR);
+        hRecoilPtJetReferenceNoWeights[iR] = new TH1F(hname, htitle, 200,-50,150);
+        hRecoilPtJetReferenceNoWeights[iR]->Sumw2();
+
         sprintf(hname,"hSignalPtJetReference_R%02d",iR+2);
         sprintf(htitle,"recoil jet pt signal R=%.1f;p_{T,jet} (GeV/c)",jetR);
         hRecoilPtJetSignal[iR] = new TH1F(hname, htitle, 200,-50,150);
         hRecoilPtJetSignal[iR]->Sumw2();
+
+        sprintf(hname,"hSignalPtJetReferenceNoWeights_R%02d",iR+2);
+        sprintf(htitle,"recoil jet pt signal no weights R=%.1f;p_{T,jet} (GeV/c)",jetR);
+        hRecoilPtJetSignalNoWeights[iR] = new TH1F(hname, htitle, 200,-50,150);
+        hRecoilPtJetSignalNoWeights[iR]->Sumw2();
 
         sprintf(hname,"h%sPtJetKt_R%02d",trigLabel.Data(),iR+2);
         sprintf(htitle,"%s pt vs jet vs dphi R=%.1f;p_{T,lead} (GeV/c);p_{T,jet} (GeV/c);|k_{T,y}|=|p_{T,jet}sin(#delta#phi)|",trigTitle.Data(),jetR);
@@ -376,7 +389,7 @@ int main(int argc, char **argv) {
                 // find reference track and add information to an array
                 if (!is_sig_evt && 
                         p->momentum().perp() > pt_TTref_min && p->momentum().perp() < pt_TTref_max && 
-                        (!gamma_trig && is_charged(p) )) {
+                        ((gamma_trig && p->pdg_id()==22) || (!gamma_trig && is_charged(p) ))) {
                     // add particles phi and pt to a vector
                     pt_TT_ar.push_back(p->momentum().perp());
                     phi_TT_ar.push_back(p->momentum().phi());
@@ -385,7 +398,7 @@ int main(int argc, char **argv) {
                 // find signal track and add information to an array
                 if (is_sig_evt && 
                         p->momentum().perp() > pt_TTsig_min && p->momentum().perp() < pt_TTsig_max && 
-                        (!gamma_trig && is_charged(p) )) {
+                        ((gamma_trig && p->pdg_id()==22) || (!gamma_trig && is_charged(p) ))) {
                     // add particles phi and pt to a vector
                     pt_TT_ar.push_back(p->momentum().perp());
                     phi_TT_ar.push_back(p->momentum().phi());
@@ -547,11 +560,13 @@ int main(int argc, char **argv) {
                         hPtJetDPhiSignal[iR]->Fill(jet_pt,fabs(dphi_TTjet),evt->weights()[0]);
                         if(fabs(dphi_TTjet) > TMath::Pi()-0.6)
                             hRecoilPtJetSignal[iR]->Fill(jet_pt,evt->weights()[0]);
+                            hRecoilPtJetSignalNoWeights[iR]->Fill(jet_pt);
                     }
                     else { // reference
                         hPtJetDPhiReference[iR]->Fill(jet_pt,fabs(dphi_TTjet),evt->weights()[0]);
                         if(fabs(dphi_TTjet) > TMath::Pi()-0.6)
                             hRecoilPtJetReference[iR]->Fill(jet_pt,evt->weights()[0]);
+                            hRecoilPtJetReferenceNoWeights[iR]->Fill(jet_pt);
                     }
                 }
             }
