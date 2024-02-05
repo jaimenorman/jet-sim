@@ -2,12 +2,12 @@
 
 # Variables to control job loop
 # number to start at
-OFFSET=1
+OFFSET=0
 # number of parallel jobs to run
-JOBS=100
+JOBS=10
 
 # Outdir labelled by date and time
-OUTDIR=/scratch/djones/simulation/Output/$(date +%Y%m%d.%H%M)
+OUTDIR=/scratch/jnorman/JEWEL/$(date +%Y%m%d.%H%M)
 # job name - files will be output to this name
 MACRO='jewel'
 
@@ -30,12 +30,12 @@ do
 	# Submit from CC7, seeting the queue (-p), output and error files (-o and -r), and shell vars to pass to the script running on the notes (--export)
 	# Check jobs with squeue
 	# Cancel jobs with scancel
-	sbatch -J $JOBNAME -p compute -o $OUTDIR/$JOBNAME.out -e $OUTDIR/$JOBNAME.err --export=MACRO=$MACRO,OUTDIR=$OUTDIR,SEED=$i runBatchLiv.sh
+	sbatch -J $JOBNAME -p compute -o $OUTDIR/$JOBNAME.out -e $OUTDIR/$JOBNAME.err --export=MACRO=$MACRO,OUTDIR=$OUTDIR,SEED=$i runBatchLiv24R.sh
     else
 	# Submit from SLC6, seeting the queue (-q), output and error files (-o and -r), and shell vars to pass to the script running on the notes (-v)
 	# Check jobs with qstat
 	# Cancel jobs with qdel
-	qsub -N $JOBNAME -q medium64 -o $OUTDIR/$JOBNAME.out -e $OUTDIR/$JOBNAME.err -v MACRO=$MACRO,OUTDIR=$OUTDIR,SEED=$i runBatchLiv.sh
+	qsub -N $JOBNAME -q medium64 -o $OUTDIR/$JOBNAME.out -e $OUTDIR/$JOBNAME.err -v MACRO=$MACRO,OUTDIR=$OUTDIR,SEED=$i runBatchLiv24R.sh
     fi    
 done
 
