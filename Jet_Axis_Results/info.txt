@@ -1,0 +1,6 @@
+Results from Matt Ockleton MPHYS project - investigating how jet axis definitions contribute to acoplanarity broadening witnessed in ALICE Run 2 measurement.
+
+This file includes ROOT files of JEWEL simulations for pp (vacuum mode), Pb-Pb recoils off, and Pb-Pb recoils on, created using the analyze_hepmc2_hjet.cxx code.
+This file also includes ROOT macros for creating histograms of dR_(axis) distributions for inclusive jets, and recoil jets. It also includes a ROOT macro for creating
+delta recoil vs delta phi distributions for both the Winner Takes All axis and the Boost Invariant pT axis, and fitting them to a Gaussian function. Also, some of the
+.pdf files of tge histograms created for dR_{axis} are included.
