@@ -35,7 +35,6 @@ using std::vector;
 // initial code from M. Van Leeuwen, modified by J. Norman
 //
 
-
 int is_stable(const HepMC::GenParticle *part) {
     // copied from AliStack::IsStable()	 
     int pdg = abs(part->pdg_id());
@@ -159,12 +158,14 @@ int main(int argc, char **argv) {
     int charged_jets = 1; // 1: charged jets, 0: full jets
     int gamma_trig = 1; // gamma jet or hadron jet?
     bool add_dummies = true; // include dummies in jet reconstruction
+    int recomb_scheme = 1; // Recombination scheme 0 is BIpt, 1 is WTA
+    bool isMatchPt = false; // Matches using distance method rather than pt match
     // h jet options
     float frac_sig = 0.5; // fraction of events to use for signal
     float pt_TTref_min = 5; // reference minimum trigger track pt
     float pt_TTref_max = 7; // reference maximum trigger track pt
-    float pt_TTsig_min = 20; // signal minimum trigger track pt
-    float pt_TTsig_max = 50; // signal maximum trigger track pt
+    float pt_TTsig_min = 15; // signal minimum trigger track pt
+    float pt_TTsig_max = 100; // signal maximum trigger track pt
 
     if (argc < 2) {
         cerr << "Need two arguments: infile outfile" << endl << "infile is HEPMC ascii format; outfile will be root format" << endl;
@@ -185,6 +186,7 @@ int main(int argc, char **argv) {
             {"fulljets",   no_argument,       &charged_jets, 0},
             {"gammajet",   no_argument,       &gamma_trig, 1},
             {"nobkg",   no_argument,       &do_bkg, 0},
+	        {"WTAscheme", no_argument,      &recomb_scheme, 1},
             /* it is also possible to have options that do not directly set a flag
              * Not used for now */
             {0, 0, 0, 0}
@@ -225,6 +227,10 @@ int main(int argc, char **argv) {
         outname.append("_full");
     if (do_bkg == 0)
         outname.append("_nobkg");
+    if (recomb_scheme == 0)
+        outname.append("_WTA");
+    else
+        outname.append("_BIpt");
     outname.append(".root");
 
     TString trigLabel("PtLead");
@@ -250,6 +256,21 @@ int main(int argc, char **argv) {
     TH1F *hRecoilPtJetReferenceNoWeights[nR];
     TH1F *hPtJet[nR];
     TH1F *hEtaJet[nR];
+    TH1F *hDPhiSignal[nR];
+    TH1F *hdifPhi[nR];
+    TH1F *hdJetRad[nR];
+    TH2F *hdifPhipT[nR];
+    TH2F *hdJetRadpT[nR];
+    TH3F *hRecoilSignal_pT_dPhi_difaxes[nR];
+    TH3F *hRecoilSignal_pT_dPhi_difaxes_WTApt[nR];
+    TH3F *hRecoilReference_pT_dPhi_difaxes[nR];
+    TH3F *hRecoilReference_pT_dPhi_difaxes_WTApt[nR];
+    TH3F *hRecoilSignal_pT_dPhi_dR[nR];
+    TH3F *hRecoilSignal_pT_dPhi_dR_WTApt[nR];
+    TH3F *hRecoilReference_pT_dPhi_dR[nR];
+    TH3F *hRecoilReference_pT_dPhi_dR_WTApt[nR];
+
+
     TH1F *hNEvent = new TH1F("hNEvent","number of events; N",1,0,1);
     hNEvent->Sumw2();
     TH1F *hNtrig = new TH1F("hNtrig", "number of triggers", 2,0,2);
@@ -327,6 +348,71 @@ int main(int argc, char **argv) {
         sprintf(htitle,"#eta jet spectrum R=%.1f;#eta_{jet}",jetR);
         hEtaJet[iR] = new TH1F(hname, htitle, 20,-1,1);
         hEtaJet[iR]->Sumw2();
+
+        sprintf(hname,"hDPhiSignal_R%02d",iR+2);
+        sprintf(htitle,"dphi R=%.1f;#Delta#phi;N",trigTitle.Data(),jetR);
+        hDPhiSignal[iR] = new TH1F(hname, htitle, 20, fastjet::pi/2, fastjet::pi);
+        hDPhiSignal[iR]->Sumw2();
+
+	sprintf(hname,"hdifPhi_R%02d",iR+2);
+        sprintf(htitle,"Difference between azimuth of each recombination R=%.1f;#Delta Jet axis azimuth;N",trigTitle.Data(),jetR);
+        hdifPhi[iR] = new TH1F(hname, htitle, 50,0,0.8);
+        hdifPhi[iR]->Sumw2();
+
+	sprintf(hname,"hdJetRad_R%02d",iR+2);
+        sprintf(htitle,"Difference between jet radius of each recombination R=%.1f;#Delta R;N",trigTitle.Data(),jetR);
+        hdJetRad[iR] = new TH1F(hname, htitle, 50,0,0.8);
+        hdJetRad[iR]->Sumw2();
+
+	sprintf(hname,"hdifPhipT_R%02d",iR+2);
+        sprintf(htitle,"Difference between azimuth of each recombination against jet transverse momentum R=%.1f;#pT;#Delta Jet axis azimuth",trigTitle.Data(),jetR);
+        hdifPhipT[iR] = new TH2F(hname, htitle,50,0,100,50,0,0.8);
+        hdifPhipT[iR]->Sumw2();
+
+        sprintf(hname,"hdJetRadpT_R%02d",iR+2);
+        sprintf(htitle,"Difference between jet radius of each recombination against jet transverse momentum R=%.1f;#pT;#Delta Jet Radius",trigTitle.Data(),jetR);
+        hdJetRadpT[iR] = new TH2F(hname, htitle,50,0,100,50,0,0.8);
+        hdJetRadpT[iR]->Sumw2();
+
+	sprintf(hname,"hRecoilSignal_pT_dPhi_difaxes_R%02d",iR+2);
+        sprintf(htitle,"Recoil Jets pT vs dPhi vs Difference in Jet Axis Azimuth WTA",trigTitle.Data(),jetR);
+        hRecoilSignal_pT_dPhi_difaxes[iR] = new TH3F(hname, htitle,100,0,100,50,fastjet::pi/2,fastjet::pi,50,0,0.8);
+        hRecoilSignal_pT_dPhi_difaxes[iR]->Sumw2();
+
+	sprintf(hname,"hRecoilSignal_pT_dPhi_difaxes_WTApt_R%02d",iR+2);
+        sprintf(htitle,"Recoil Jets pT vs dPhi vs Difference in Jet Axis Azimuth WTApt",trigTitle.Data(),jetR);
+        hRecoilSignal_pT_dPhi_difaxes_WTApt[iR] = new TH3F(hname, htitle,100,0,100,50,fastjet::pi/2,fastjet::pi,50,0,0.8);
+        hRecoilSignal_pT_dPhi_difaxes_WTApt[iR]->Sumw2();
+
+	sprintf(hname,"hRecoilReference_pT_dPhi_difaxes_R%02d",iR+2);
+        sprintf(htitle,"Recoil Jets pT vs dPhi vs Difference in Jet Axis Azimuth WTA",trigTitle.Data(),jetR);
+        hRecoilReference_pT_dPhi_difaxes[iR] = new TH3F(hname, htitle,100,0,100,50,fastjet::pi/2,fastjet::pi,50,0,0.8);
+        hRecoilReference_pT_dPhi_difaxes[iR]->Sumw2();
+
+        sprintf(hname,"hRecoilReference_pT_dPhi_difaxes_WTApt_R%02d",iR+2);
+        sprintf(htitle,"Recoil Jets pT vs dPhi vs Difference in Jet Axis Azimuth WTApt",trigTitle.Data(),jetR);
+        hRecoilReference_pT_dPhi_difaxes_WTApt[iR] = new TH3F(hname, htitle,100,0,100,50,fastjet::pi/2,fastjet::pi,50,0,0.8);
+        hRecoilReference_pT_dPhi_difaxes_WTApt[iR]->Sumw2();
+
+	sprintf(hname,"hRecoilSignal_pT_dPhi_dR_R%02d",iR+2);
+        sprintf(htitle,"Recoil Jets pT vs dPhi vs Difference in Jet Radius WTA",trigTitle.Data(),jetR);
+        hRecoilSignal_pT_dPhi_dR[iR] = new TH3F(hname, htitle,100,0,100,50,fastjet::pi/2,fastjet::pi,50,0,0.8);
+        hRecoilSignal_pT_dPhi_dR[iR]->Sumw2();
+
+        sprintf(hname,"hRecoilSignal_pT_dPhi_dR_WTApt_R%02d",iR+2);
+        sprintf(htitle,"Recoil Jets pT vs delta radius vs Difference in Jet Axis Radius WTApt",trigTitle.Data(),jetR);
+        hRecoilSignal_pT_dPhi_dR_WTApt[iR] = new TH3F(hname, htitle,100,0,100,50,fastjet::pi/2,fastjet::pi,50,0,0.8);
+        hRecoilSignal_pT_dPhi_dR_WTApt[iR]->Sumw2();
+
+        sprintf(hname,"hRecoilReference_pT_dPhi_dR_R%02d",iR+2);
+        sprintf(htitle,"Recoil Jets pT vs dPhi vs Difference in Jet Radius WTA",trigTitle.Data(),jetR);
+        hRecoilReference_pT_dPhi_dR[iR] = new TH3F(hname, htitle,100,0,100,50,fastjet::pi/2,fastjet::pi,50,0,0.8);
+        hRecoilReference_pT_dPhi_dR[iR]->Sumw2();
+
+        sprintf(hname,"hRecoilReference_pT_dPhi_dR_WTApt_R%02d",iR+2);
+        sprintf(htitle,"Recoil Jets pT vs dPhi vs Difference in Jet Radius WTApt",trigTitle.Data(),jetR);
+        hRecoilReference_pT_dPhi_dR_WTApt[iR] = new TH3F(hname, htitle,100,0,100,50,fastjet::pi/2,fastjet::pi,50,0,0.8);
+        hRecoilReference_pT_dPhi_dR_WTApt[iR]->Sumw2();
     }
 
     // set up object to get random number for TT selection
@@ -454,9 +540,17 @@ int main(int argc, char **argv) {
         // Do jet finding
         fastjet::GhostedAreaSpec ghostSpec(max_eta,1,0.01);
         fastjet::Strategy               strategy = fastjet::Best;
-        fastjet::RecombinationScheme    recombScheme = fastjet::BIpt_scheme;
+        // fastjet::RecombinationScheme    recombScheme = fastjet::BIpt_scheme;
+	fastjet::RecombinationScheme    recombScheme;
         fastjet::AreaType areaType =   fastjet::active_area;
         fastjet::AreaDefinition areaDef = fastjet::AreaDefinition(areaType,ghostSpec);
+
+	if(recomb_scheme == 0) {
+	    recombScheme = fastjet::BIpt_scheme;
+	}
+	else {
+        recombScheme = fastjet::WTA_pt_scheme;
+	}
 
         hPtLead->Fill(pt_lead,evt->weights()[0]);
 
@@ -464,12 +558,22 @@ int main(int argc, char **argv) {
         for (int iR = 0; iR < nR; iR++) { 
             float jetR = 0.2+0.1*iR;
             //fastjet::RangeDefinition range(-max_eta+jetR, max_eta-jetR, 0, 2.*fastjet::pi);
-            fastjet::JetDefinition jetDefCh(fastjet::antikt_algorithm, jetR,
-                    recombScheme, strategy);
+            fastjet::JetDefinition jetDefCh(fastjet::antikt_algorithm, jetR, recombScheme , strategy);
+	    fastjet::JetDefinition jetDefCh2(fastjet::antikt_algorithm, jetR, fastjet::WTA_pt_scheme, strategy); // second jet def for comparison
 
             fastjet::ClusterSequenceArea clustSeqCh(fjInputs, jetDefCh,areaDef);
+	    fastjet::ClusterSequenceArea clustSeqCh2(fjInputs, jetDefCh2,areaDef);
 
             vector <fastjet::PseudoJet> inclusiveJetsCh = clustSeqCh.inclusive_jets();
+	    vector <fastjet::PseudoJet> inclusiveJetsCh2  = clustSeqCh2.inclusive_jets();
+	    //cout << "Size of InclusiveJetsCh = " << inclusiveJetsCh.size() << endl;
+	    // for (unsigned int iJet = 0; iJet < inclusiveJetsCh.size(); iJet++) {
+	       // cout << "pT = " << inclusiveJetsCh[iJet].perp() << " phi = " << inclusiveJetsCh[iJet].phi() << " eta = " << inclusiveJetsCh[iJet].eta() << endl;
+	    //}
+	    //cout << "Size of InclusiveJetsCh2 = " << inclusiveJetsCh2.size() << endl;
+	     //for (unsigned int iJet2 = 0; iJet2 < inclusiveJetsCh2.size(); iJet2++) {
+	      // cout << "pT = " << inclusiveJetsCh2[iJet2].perp() << " phi = " << inclusiveJetsCh2[iJet2].phi() << " eta = " << inclusiveJetsCh2[iJet2].eta() << endl;
+	     //}
 
             // Background calculation
 
@@ -507,7 +611,7 @@ int main(int argc, char **argv) {
                 float dphi_jh = dphi(inclusiveJetsCh[iJet].phi(),phi_lead);
                 float jet_pt = inclusiveJetsCh[iJet].perp();
                 float jet_eta = inclusiveJetsCh[iJet].eta();
-                //emb_jet_phi = inclusiveJetsCh[iJet].phi();
+                float jet_phi = inclusiveJetsCh[iJet].phi();
                 float jet_area = clustSeqCh.area(inclusiveJetsCh[iJet]);
                 if (do_bkg==1) {
                     // subtract background from jet
@@ -542,6 +646,75 @@ int main(int argc, char **argv) {
                     hSubComparison->Fill(jet_pt,inclusiveJetsCh[iJet].perp(),evt->weights()[0]);
                     hFracChange->Fill(inclusiveJetsCh[iJet].perp()/jet_pt,inclusiveJetsCh[iJet].perp(),evt->weights()[0]);
                 }
+		
+	        int iJet2Matched = -1; // defining integer for hist fill if matched
+		float jet_pt2 = -1;
+		float dphi_jh2 = -1;
+		float jet_eta2 = -1;
+		float jet_phi2 = -1;
+		float jet_area2 = -1;
+		float dif_phi = -1;
+		float djet_rad = -1;
+		float jet_pt2_matched = -1;
+                float dphi_jh2_matched = -1;
+                float jet_eta2_matched = -1;
+                float jet_phi2_matched = -1;
+                float jet_area2_matched = -1;
+                float dif_phi_matched = -1;
+                float djet_rad_matched = -1;
+
+
+		// Looping over all jets for second recombination scheme:
+		for (unsigned int iJet2 = 0; iJet2 < inclusiveJetsCh2.size(); iJet2++) {
+		  if (std::abs(inclusiveJetsCh2[iJet2].eta()) > max_eta-jetR)
+                    continue;
+
+		  // get jet information                                                                                                                                           
+		  jet_pt2 = inclusiveJetsCh2[iJet2].perp();
+		  dphi_jh2 = dphi(inclusiveJetsCh2[iJet2].phi(),phi_lead);
+		  jet_eta2 = inclusiveJetsCh2[iJet2].eta();
+		  jet_phi2 = inclusiveJetsCh2[iJet2].phi();
+		  jet_area2 = clustSeqCh2.area(inclusiveJetsCh2[iJet2]);
+		  dif_phi = abs(jet_phi2 - jet_phi);
+		  float a = jet_phi2 - jet_phi;
+		  float b = jet_eta2 - jet_eta;
+		  djet_rad = sqrt(pow(a,2)+pow(b,2));
+		  
+		  float fracMatchR = 0.5;
+
+		  if ( ( isMatchPt && abs(jet_pt - jet_pt2) < 0.00001 ) // pt match
+		      || (!isMatchPt && djet_rad < fracMatchR * jetR) ) { // distance method
+		   
+			 iJet2Matched = iJet2; //assigning iterator value to iJetMatched if jets match
+			 djet_rad_matched = djet_rad;
+			 jet_pt2_matched = jet_pt2;
+			 dphi_jh2_matched = dphi_jh2;
+			 jet_eta2_matched = jet_eta2;
+			 jet_phi2_matched = jet_phi2;
+			 jet_area2_matched = jet_area2;
+			 dif_phi_matched = dif_phi;
+
+		    // hist fill
+		    hdifPhi[iR]->Fill(fabs(dif_phi),evt->weights()[0]);
+		    hdJetRad[iR]->Fill(fabs(djet_rad),evt->weights()[0]);
+		    hdifPhipT[iR]->Fill(jet_pt,fabs(dif_phi),evt->weights()[0]);
+		    hdJetRadpT[iR]->Fill(jet_pt,fabs(djet_rad),evt->weights()[0]);
+		    }
+		  else {
+		    continue;
+		  }
+
+	        }
+		  if(iJet2Matched<0) { // checks if worked
+		    // cout << "Jet not matched" << endl;
+		    //cout << "jet1_eta = " <<  jet_eta << " jet2_eta = " << jet_eta2 << endl;
+                    //cout << "jet1_phi = " << jet_phi << " jet2_phi = " << jet_phi2 << endl;
+		  }
+		  else {
+		    //cout << "Jets correctly matched" << endl;
+		      }
+
+
                 // fill histos
                 jet_pt = inclusiveJetsCh[iJet].perp();
                 jet_eta = inclusiveJetsCh[iJet].eta();
@@ -556,14 +729,26 @@ int main(int argc, char **argv) {
 
                 if(n_TT>0) { // found trigger track, fill h jet histos
                     float dphi_TTjet = dphi(inclusiveJetsCh[iJet].phi(),phi_TT);
-                    if(is_sig_evt) { // signal
-                        hPtJetDPhiSignal[iR]->Fill(jet_pt,fabs(dphi_TTjet),evt->weights()[0]);
-                        if(fabs(dphi_TTjet) > TMath::Pi()-0.6)
+		    float dphi_TTjet2 = dphi(jet_phi2,phi_TT);
+		    if(is_sig_evt) { // signal
+		      
+		      if(jet_pt>10) hDPhiSignal[iR]->Fill(fabs(dphi_TTjet),evt->weights()[0]);
+		      hPtJetDPhiSignal[iR]->Fill(jet_pt,fabs(dphi_TTjet),evt->weights()[0]);
+		      hRecoilSignal_pT_dPhi_difaxes[iR]->Fill(jet_pt,fabs(dphi_TTjet),dif_phi_matched,evt->weights()[0]);
+		      hRecoilSignal_pT_dPhi_difaxes_WTApt[iR]->Fill(jet_pt,fabs(dphi_TTjet2),dif_phi_matched,evt->weights()[0]);
+		      hRecoilSignal_pT_dPhi_dR[iR]->Fill(jet_pt,fabs(dphi_TTjet),djet_rad_matched,evt->weights()[0]);
+                      hRecoilSignal_pT_dPhi_dR_WTApt[iR]->Fill(jet_pt,fabs(dphi_TTjet2),djet_rad_matched,evt->weights()[0]);
+
+		      if(fabs(dphi_TTjet) > TMath::Pi()-0.6)
                             hRecoilPtJetSignal[iR]->Fill(jet_pt,evt->weights()[0]);
                             hRecoilPtJetSignalNoWeights[iR]->Fill(jet_pt);
                     }
                     else { // reference
                         hPtJetDPhiReference[iR]->Fill(jet_pt,fabs(dphi_TTjet),evt->weights()[0]);
+			hRecoilReference_pT_dPhi_difaxes[iR]->Fill(jet_pt,fabs(dphi_TTjet),dif_phi_matched,evt->weights()[0]);
+			hRecoilReference_pT_dPhi_difaxes_WTApt[iR]->Fill(jet_pt,fabs(dphi_TTjet2),dif_phi_matched,evt->weights()[0]);
+			hRecoilReference_pT_dPhi_dR[iR]->Fill(jet_pt,fabs(dphi_TTjet),djet_rad_matched,evt->weights()[0]);
+                        hRecoilReference_pT_dPhi_dR_WTApt[iR]->Fill(jet_pt,fabs(dphi_TTjet2),djet_rad_matched,evt->weights()[0]);
                         if(fabs(dphi_TTjet) > TMath::Pi()-0.6)
                             hRecoilPtJetReference[iR]->Fill(jet_pt,evt->weights()[0]);
                             hRecoilPtJetReferenceNoWeights[iR]->Fill(jet_pt);
