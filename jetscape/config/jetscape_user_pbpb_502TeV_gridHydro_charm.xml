@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<jetscape>
+	<nEvents>5000</nEvents>
+	<setReuseHydro>true</setReuseHydro>
+	<nReuseHydro>200</nReuseHydro>
+	<JetScapeWriterAscii>off</JetScapeWriterAscii>
+	<JetScapeWriterFinalStatePartonsAscii>on</JetScapeWriterFinalStatePartonsAscii>
+	<JetScapeWriterFinalStateHadronsAscii>on</JetScapeWriterFinalStateHadronsAscii>
+	<outputFilename>jetscape_PbPb_5020_MYNJOB</outputFilename>
+	<write_pthat>1</write_pthat>
+	<vlevel>1</vlevel>
+	<nEvents_printout>1000</nEvents_printout>
+	<final_state_writer_header_version>3</final_state_writer_header_version>
+	<Random>
+		<seed>MYSEED</seed>
+	</Random>
+	<IS>
+        <initial_profile_path>MYHYDROPATH</initial_profile_path>
+	</IS>
+	<Hard>
+		<PythiaGun>
+			<FSR_on>0</FSR_on>
+			<pTHatMin>4.0</pTHatMin>
+			<pTHatMax>-1</pTHatMax>
+			<eCM>5020</eCM>
+			<useHybridHad>0</useHybridHad>
+			<LinesToRead>
+PhaseSpace:bias2Selection = on
+PhaseSpace:bias2SelectionPow = 4.0
+PhaseSpace:bias2SelectionRef = 10
+
+          ### processes: c-cbar and b-bbar processes
+          HardQCD:all off
+          HardQCD:hardccbar on
+          HardQCD:hardbbbar off
+          HardQCD:gg2ccbar on
+          HardQCD:qqbar2ccbar on
+          HardQCD:gg2bbbar off
+          HardQCD:qqbar2bbbar off
+
+          ### decays
+          ParticleDecays:limitTau0 on
+          ParticleDecays:tau0Max 10.
+
+          ### pT-hard bins
+          PhaseSpace:pTHatMin = 1
+          PhaseSpace:pTHatMax = 200
+
+</LinesToRead>
+		</PythiaGun>
+	</Hard>
+	<Preequilibrium>
+		<NullPreDynamics></NullPreDynamics>
+	</Preequilibrium>
+	<Hydro>
+		<hydro_from_file>
+			<name>Hydro from file</name>
+			<read_in_multiple_hydro>1</read_in_multiple_hydro>
+			<load_viscous_info>0</load_viscous_info>
+            <hydro_files_folder>MYHYDROPATH</hydro_files_folder>
+            <boost_invariant_>1</boost_invariant_>
+		</hydro_from_file>
+	</Hydro>
+	<Eloss>
+		<deltaT>0.1</deltaT>
+		<formTime>-0.1</formTime>
+		<maxT>150</maxT>
+		<tStart>0.6</tStart>
+		<mutex>ON</mutex>
+		<Matter>
+			<name>Matter</name>
+			<useHybridHad>0</useHybridHad>
+			<matter_on>1</matter_on>
+			<Q0>2.0</Q0>
+			<T0>0.16</T0>
+			<vir_factor>0.25</vir_factor>
+			<in_vac>0</in_vac>
+			<recoil_on>1</recoil_on>
+			<broadening_on>0</broadening_on>
+			<brick_med>0</brick_med>
+			<brick_length>5.0</brick_length>
+			<hydro_Tc>0.16</hydro_Tc>
+			<QhatParametrizationType>5</QhatParametrizationType>
+			<qhat0>-2.0</qhat0>
+			<alphas>0.3</alphas>
+			<qhatA>10.0</qhatA>
+			<qhatB>100.0</qhatB>
+			<qhatC>0.2</qhatC>
+			<qhatD>5.0</qhatD>
+		</Matter>
+		<Lbt>
+			<name>Lbt</name>
+			<Q0>2.0</Q0>
+			<in_vac>0</in_vac>
+			<only_leading>0</only_leading>
+			<hydro_Tc>0.16</hydro_Tc>
+			<alphas>0.3</alphas>
+			<run_alphas>1</run_alphas>
+		</Lbt>
+	</Eloss>
+	<JetHadronization>
+		<name>colorless</name>
+		<take_recoil>1</take_recoil>
+		<eCMforHadronization>2510</eCMforHadronization>
+        <LinesToRead>
+            111:mayDecay=off
+        
+            # Correct decay lengths (wrong in PYTHIA8 decay table)
+            # Lb
+            5122:tau0 = 0.4390
+            # Xic0
+            4132:tau0 = 0.0455
+            # OmegaC
+            4332:tau0 = 0.0803
+
+            ### Force golden charm hadrons decay modes for D2H studies
+            ### add D0 decays absent in PYTHIA8 decay table and set BRs from PDG for other
+            421:oneChannel = 1 0.0389 0 -321 211
+            421:addChannel = 1 0.00389 0 -321 211 111
+            ### add D+ decays absent in PYTHIA8 decay table and set BRs from PDG for other
+            411:oneChannel = 1 0.0752 0 -321 211 211
+            411:addChannel = 1 0.0104 0 -313 211
+            411:addChannel = 1 0.0156 0 311 211
+            411:addChannel = 1 0.0752 0 333 211 # to have the same amount of D+->KKpi and D+->Kpipi
+            ## add Lc decays absent in PYTHIA8 decay table and set BRs from PDG for other
+            4122:oneChannel = 1 0.0196 100 2212 -313
+            4122:addChannel = 1 0.0108 100 2224 -321
+            4122:addChannel = 1 0.022 100 102134 211
+            4122:addChannel = 1 0.035 0 2212 -321 211
+            4122:addChannel = 1 0.0159 0 2212 311
+            ### add Xic+ decays absent in PYTHIA8 decay table
+            4232:addChannel = 1 0.2 0 2212 -313
+            4232:addChannel = 1 0.2 0 2212 -321 211
+            4232:addChannel = 1 0.2 0 3324 211
+            4232:addChannel = 1 0.2 0 3312 211 211
+            ### add Xic0 decays absent in PYTHIA8 decay table
+            4132:addChannel = 1 0.0143 0 3312 211
+            ### add OmegaC decays absent in PYTHIA8 decay table
+            4332:addChannel = 1 0.5 0 3334 211
+            4332:addChannel = 1 0.5 0 3312 211
+
+            ### K* -> K pi
+            313:onMode = off
+            313:onIfAll = 321 211
+            ### for Ds -> Phi pi+
+            333:onMode = off
+            333:onIfAll = 321 321
+            ### for D0 -> rho0 pi+ k-
+            113:onMode = off
+            113:onIfAll = 211 211
+            ### for Lambda_c -> Delta++ K-
+            2224:onMode = off
+            2224:onIfAll = 2212 211
+            ### for Lambda_c -> Lambda(1520) K-
+            102134:onMode = off
+            102134:onIfAll = 2212 321
+            ### for Xic0 -> pi Xi -> pi pi Lambda -> pi pi pi p
+            ### and Omega_c -> pi Xi -> pi pi Lambda -> pi pi pi p
+            3312:onMode = off
+            3312:onIfAll = 3122 -211
+            3122:onMode = off
+            3122:onIfAll = 2212 -211
+            ### for Omega_c -> pi Omega -> pi K Lambda -> pi K pi p
+            3334:onMode = off
+            3334:onIfAll = 3122 -321
+
+            ### switch off all decay channels
+            411:onMode = off
+            421:onMode = off
+            431:onMode = off
+            4122:onMode = off
+            4232:onMode = off
+            4132:onMode = off
+            443:onMode = off
+            4332:onMode = off
+
+            # no decays
+            ## D0 -> K pi
+            #421:onIfMatch = 321 211
+            #### D0 -> K pi pi0
+            #421:onIfMatch = 321 211 111
+
+            #### D+/- -> K pi pi
+            #411:onIfMatch = 321 211 211
+            #### D+/- -> K* pi
+            #411:onIfMatch = 313 211
+            #### D+/- -> phi pi
+            #411:onIfMatch = 333 211
+
+            #### D_s -> K K*
+            #431:onIfMatch = 321 313
+            #### D_s -> Phi pi
+            #431:onIfMatch = 333 211
+
+            #### Lambda_c -> p K*
+            #4122:onIfMatch = 2212 313
+            #### Lambda_c -> Delta K
+            #4122:onIfMatch = 2224 321
+            #### Lambda_c -> Lambda(1520) pi
+            #4122:onIfMatch = 102134 211
+            #### Lambda_c -> p K pi
+            #4122:onIfMatch = 2212 321 211
+            #### Lambda_c -> pK0s
+            #4122:onIfMatch = 2212 311
+
+            #### Xic+ -> pK*0
+            #4232:onIfMatch = 2212 313
+            #### Xic+ -> p K- pi+
+            #4232:onIfMatch = 2212 321 211
+            #### Xic+ -> Xi*0 pi+, Xi*->Xi- pi+
+            #4232:onIfMatch = 3324 211
+            #### Xic+ -> Xi- pi+ pi+
+            #4232:onIfMatch = 3312 211 211
+
+            #### Xic0 -> Xi- pi+
+            #4132:onIfMatch = 3312 211
+
+            #### Omega_c -> Omega pi
+            #4332:onIfMatch = 3334 211
+            #### Omega_c -> Xi pi
+            #4332:onIfMatch = 3312 211
+
+        
+        
+        </LinesToRead>
+	</JetHadronization>
+</jetscape>
